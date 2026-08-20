@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/hooks/useAuth'
 import Login from '@/pages/auth/Login'
-import Projets from '@/pages/projets/Projets'
+import SuiviChantier from '@/pages/projets/SuiviChantier'
 import ProjetDetail from '@/pages/projets/ProjetDetail'
 import MoeLayout from '@/components/layout/MoeLayout'
 import Dashboard from '@/pages/moe/Dashboard'
@@ -48,7 +48,7 @@ function AppRoutes() {
       <Route path="/attestations/:token" element={<AttestationValidation />} />
       <Route element={<ProtectedRoute role="moe" permission="platform.moe.access"><MoeLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/projets" element={<Projets />} />
+        <Route path="/projets" element={<SuiviChantier />} />
         <Route path="/projets/:id" element={<ProjetDetail />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/clients" element={<Clients />} />
