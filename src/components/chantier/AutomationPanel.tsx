@@ -1,0 +1,19 @@
+import { useEffect, useState } from 'react'
+import { Bot, Check, Cloud, Link2, ScanText } from 'lucide-react'
+import api from '@/lib/api'
+import type { Document, OcrAnalysis, Projet } from '@/types'
+
+export default function AutomationPanel({ project, onChanged }: { project: Projet; onChanged: () => Promise<unknown> | void }) {
+  const [storage, setStorage] = useState<{ default_disk: string; cloud_ready: boolean }>()
+  const [busy, setBusy] = useState<number>()
+  const [error, setError] = useState('')
+  useEffect(() => { api.get('/automation/storage-status').then(({ data }) => setStorage(data)).catch(() => setStorage(undefined)) }, [])
+  const steps = (project.tracking_phases ?? []).flatMap((phase) => phase.steps)
+  const run = async (id: number, action: () => Promise<unknown>) => { setBusy(id); setError(''); try { await action(); await onChanged() } catch { setError('Impossible d’effectuer cette analyse ou association.') } finally { setBusy(undefined) } }
+  const analyze = (document: Document) => run(document.id, () => api.post(`/documents/${document.id}/analyze`))
+  const confirm = (document: Document, analysis: OcrAnalysis) => run(document.id, () => api.post(`/ocr-analyses/${analysis.id}/confirm`, { project_step_id: document.project_step_id, type_document: analysis.detected_type }))
+  const associate = (document: Document, stepId: string) => { if (stepId) void run(document.id, () => api.post(`/documents/${document.id}/associate-step`, { project_step_id: Number(stepId) })) }
+  return <section className="mt-5 rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Bot className="h-5 w-5 text-indigo-600" /><h3 className="text-sm font-bold">Détection et classement</h3></div><span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500"><Cloud className="h-3.5 w-3.5" />{storage?.cloud_ready ? `Cloud ${storage.default_disk} actif` : `Stockage ${storage?.default_disk ?? 'local'}`}</span></div>{error && <p className="mt-3 text-xs font-medium text-red-600">{error}</p>}<div className="mt-3 space-y-2">{(project.documents ?? []).map((document) => { const latest = document.ocr_analyses?.at(-1); return <article key={document.id} className="rounded-xl border border-indigo-100 bg-white p-3"><div className="flex flex-wrap items-center gap-2"><FileName document={document} /><select value={document.project_step_id ?? ''} onChange={(event) => associate(document, event.target.value)} className="ml-auto max-w-48 rounded-lg border border-slate-200 px-2 py-1 text-xs"><option value="">Associer à une étape</option>{steps.map((step) => <option key={step.id} value={step.id}>{step.definition.label}</option>)}</select><button disabled={busy === document.id} onClick={() => void analyze(document)} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 px-2 py-1 text-xs font-semibold text-indigo-700"><ScanText className="h-3.5 w-3.5" />Analyser</button>{latest?.statut === 'completed' && document.detection_source !== 'automatic_confirmed' && <button disabled={busy === document.id} onClick={() => void confirm(document, latest)} className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2 py-1 text-xs font-semibold text-white"><Check className="h-3.5 w-3.5" />Confirmer {latest.detected_type}</button>}</div>{latest && <p className="mt-1 text-[11px] text-slate-400">Analyse {latest.provider} · confiance {Math.round((latest.confidence_score ?? 0) * 100)} % · source {document.detection_source?.replaceAll('_', ' ')}</p>}</article>})}</div></section>
+}
+
+function FileName({ document }: { document: Document }) { return <div className="flex min-w-40 items-center gap-2"><Link2 className="h-4 w-4 text-indigo-400" /><span className="truncate text-xs font-semibold">{document.nom}</span></div> }

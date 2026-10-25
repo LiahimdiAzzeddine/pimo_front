@@ -1,20 +1,55 @@
 import { useQuery } from '@tanstack/react-query'
-import { CalendarDays, FileText, HardHat } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import api from '@/lib/api'
+import { AlertTriangle, RotateCw } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import AssistantOverview from '@/components/chantier/AssistantOverview'
+import SuiviWorkspace from '@/components/chantier/SuiviWorkspace'
+import type { PhaseDefinition, StepDefinition } from '@/components/chantier/workflow'
 import PageHeader from '@/components/ui/PageHeader'
-import StatusBadge from '@/components/ui/StatusBadge'
-import type { Document, PaginatedResponse, Projet } from '@/types'
+import api from '@/lib/api'
+import type { AssistantItem, Projet, WorkloadBlock } from '@/types'
+
+interface SuiviChantierResponse {
+  projects: Projet[]
+  counts: { total: number; by_phase: Record<string, number> }
+  widgets: {
+    urgent_documents: unknown[]; upcoming_documents: unknown[]; inactive_projects: Projet[]
+    assistant_items: AssistantItem[]; time_minutes: number; workload: WorkloadBlock[]
+  }
+  generated_at: string
+}
 
 export default function Chantier() {
-  const query = useQuery({ queryKey: ['chantier-view'], queryFn: async () => {
-    const [projects, documents] = await Promise.all([api.get<PaginatedResponse<Projet>>('/projets?phase=chantier&limit=100'), api.get<PaginatedResponse<Document>>('/documents?phase=chantier&limit=200')])
-    return { projects: projects.data.data, documents: documents.data.data }
-  }})
-  const data = query.data ?? { projects: [], documents: [] }
+  const [searchParams, setSearchParams] = useSearchParams()
+  const query = useQuery({
+    queryKey: ['suivi-chantier'],
+    queryFn: async () => (await api.get<SuiviChantierResponse>('/suivi-chantier?limit=100')).data,
+    staleTime: 30_000,
+  })
+
+  const setParam = (changes: Record<string, string | null>) => setSearchParams((current) => {
+    const next = new URLSearchParams(current)
+    Object.entries(changes).forEach(([key, value]) => value ? next.set(key, value) : next.delete(key))
+    return next
+  })
+
+  if (query.isPending) return <><PageHeader title="Suivi chantier" description="Chargement de vos dossiers et de leurs étapes..." /><div className="grid animate-pulse gap-3 md:grid-cols-2 xl:grid-cols-5">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-36 rounded-2xl bg-slate-200" />)}</div><div className="mt-5 h-[650px] animate-pulse rounded-2xl bg-slate-200" /></>
+  if (query.isError) return <><PageHeader title="Suivi chantier" description="Pilotez vos dossiers, phases et étapes depuis une vue unique." /><div className="rounded-2xl border border-red-200 bg-red-50 p-10 text-center"><AlertTriangle className="mx-auto h-8 w-8 text-red-500" /><p className="mt-3 font-semibold text-red-950">Impossible de charger le suivi chantier.</p><button type="button" onClick={() => query.refetch()} className="mx-auto mt-5 flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"><RotateCw className="h-4 w-4" />Réessayer</button></div></>
+
+  const projects = query.data.projects
   return <>
-    <PageHeader title="Suivi chantier" description="Retrouvez les chantiers actifs, comptes rendus, plannings et documents de diffusion." />
-    <div className="grid gap-4 md:grid-cols-3"><div className="rounded-2xl bg-slate-950 p-5 text-white"><HardHat className="mb-4 h-6 w-6 text-blue-300" /><p className="text-3xl font-bold">{data.projects.length}</p><p className="text-sm text-slate-300">Chantiers suivis</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><FileText className="mb-4 h-6 w-6 text-blue-600" /><p className="text-3xl font-bold">{data.documents.length}</p><p className="text-sm text-slate-500">Documents chantier</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><CalendarDays className="mb-4 h-6 w-6 text-amber-600" /><p className="text-3xl font-bold">{data.documents.filter((item) => item.due_at && new Date(item.due_at) >= new Date()).length}</p><p className="text-sm text-slate-500">Echeances a venir</p></div></div>
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white"><div className="border-b border-slate-100 p-5"><h2 className="font-bold">Chantiers en cours</h2></div><div className="grid gap-4 p-4 lg:grid-cols-2">{data.projects.map((project) => { const projectDocuments = data.documents.filter((document) => document.projet?.id === project.id || document.projet_id === project.id); return <Link key={project.id} to={`/projets/${project.id}`} className="rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:shadow-sm"><div className="flex items-start justify-between"><div><p className="font-semibold">{project.nom}</p><p className="mt-1 text-xs text-slate-400">{project.adresse ?? 'Adresse non renseignee'}</p></div><StatusBadge value={project.statut} /></div><div className="mt-5 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500"><span>{projectDocuments.length} document(s)</span><span>{projectDocuments.filter((item) => item.type_document === 'compte_rendu').length} compte(s) rendu(s)</span></div></Link> })}{!query.isLoading && data.projects.length === 0 && <p className="col-span-2 py-10 text-center text-sm text-slate-400">Aucun projet en phase chantier</p>}</div></section>
+    <PageHeader title="Suivi chantier" description={`${projects.length} dossier${projects.length > 1 ? 's' : ''} actif${projects.length > 1 ? 's' : ''} · Vue phases, étapes et documents`} action={<button type="button" onClick={() => query.refetch()} disabled={query.isFetching} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50"><RotateCw className={`h-4 w-4 ${query.isFetching ? 'animate-spin' : ''}`} />Mettre à jour</button>} />
+    <AssistantOverview projects={projects} assistant={query.data.widgets} onChanged={() => query.refetch()} />
+    <SuiviWorkspace
+      projects={projects}
+      phaseFilter={searchParams.get('filtre') ?? 'all'}
+      selectedProjectId={Number(searchParams.get('projet')) || undefined}
+      selectedPhaseValue={searchParams.get('phase') ?? undefined}
+      selectedStepCode={searchParams.get('etape') ?? undefined}
+      onPhaseFilterChange={(value) => setParam({ filtre: value === 'all' ? null : value, projet: null, phase: null, etape: null })}
+      onProjectChange={(project) => setParam({ projet: String(project.id), phase: project.phase, etape: null })}
+      onPhaseChange={(phase: PhaseDefinition) => setParam({ phase: phase.value, etape: phase.steps[0]?.code ?? null })}
+      onStepChange={(step: StepDefinition) => setParam({ etape: step.code })}
+      onChanged={() => query.refetch()}
+    />
   </>
 }

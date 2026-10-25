@@ -64,7 +64,7 @@ export interface Partenaire {
 export interface Devis {
   id: number; projet_id: number; partenaire_id?: number; partenaire_nom?: string; lot_id?: number; lot?: string
   type?: 'mo' | 'artisan'; montant_ht?: number; montant_ttc?: number; taux_tva?: number; statut: string; phase?: string; date_butoir?: string
-  document_id?: number; notes?: string; created_at?: string
+  document_id?: number; notes?: string; cctp_compliance?: 'a_verifier' | 'conforme' | 'non_conforme' | 'reserves'; compliance_notes?: string; created_at?: string
   projet?: Projet; partenaire?: Partenaire; lot_reference?: Lot; document?: Document
 }
 
@@ -90,6 +90,108 @@ export interface Relance {
   statut: string; scheduled_at?: string; sent_at?: string; attempts: number; projet?: Projet
 }
 
+export interface TrackingStepDefinition {
+  id: number
+  code: string
+  label: string
+  description?: string
+  component_type?: string
+  position: number
+}
+
+export interface ProjectStep {
+  id: number
+  status: 'a_faire' | 'en_cours' | 'terminee' | 'sans_objet' | 'bloquee'
+  notes?: string
+  data?: Record<string, unknown>
+  started_at?: string
+  completed_at?: string
+  confirmed_manually_at?: string
+  confirmed_by?: number
+  definition: TrackingStepDefinition
+}
+
+export interface TrackingPhaseDefinition {
+  id: number
+  code: string
+  label: string
+  color?: string
+  position: number
+}
+
+export interface ProjectPhase {
+  id: number
+  status: 'a_faire' | 'en_cours' | 'terminee' | 'sans_objet' | 'bloquee'
+  started_at?: string
+  completed_at?: string
+  definition: TrackingPhaseDefinition
+  steps: ProjectStep[]
+}
+
+export interface ProjectActivity {
+  id: number
+  action: string
+  description: string
+  metadata?: Record<string, unknown>
+  created_at: string
+}
+
+export interface PermitInstruction {
+  id: number
+  projet_id: number
+  application_type?: 'PC' | 'DP' | 'AT' | 'PA' | 'autre'
+  receipt_number?: string
+  submitted_at?: string
+  instruction_deadline?: string
+  decision: 'en_instruction' | 'accordee' | 'refusee' | 'pieces_complementaires'
+  decision_at?: string
+  order_reference?: string
+  purge_at?: string
+  appeal_deadline?: string
+  sign_displayed_at?: string
+  notes?: string
+}
+
+export interface SiteReportRecipient {
+  id: number
+  name: string
+  email: string
+  role?: string
+  status: string
+  sent_at?: string
+}
+
+export interface SiteReport {
+  id: number
+  projet_id: number
+  number: number
+  title: string
+  meeting_at?: string
+  content?: string
+  status: 'brouillon' | 'envoye'
+  sent_at?: string
+  recipients: SiteReportRecipient[]
+}
+
+export interface ProjectAmendment {
+  id: number
+  projet_id: number
+  partenaire_id?: number
+  reference?: string
+  title: string
+  amount_ht?: number
+  amount_ttc?: number
+  status: 'propose' | 'valide' | 'refuse' | 'signe'
+  decided_at?: string
+  notes?: string
+  partenaire?: Partenaire
+}
+
+export interface ProjectReservation { id: number; projet_id: number; partenaire_id?: number; description: string; location?: string; severity: 'mineure' | 'normale' | 'critique'; due_at?: string; status: 'ouverte' | 'en_cours' | 'levee'; lifted_at?: string; notes?: string; partenaire?: Partenaire }
+export interface ProjectWarranty { id: number; projet_id: number; partenaire_id?: number; type: 'parfait_achevement' | 'biennale' | 'decennale' | 'autre'; starts_at: string; ends_at: string; notes?: string; partenaire?: Partenaire }
+export interface AssistantItem { id: number; projet_id?: number; type: 'urgence' | 'decision' | 'suggestion' | 'mail'; title: string; details?: string; due_at?: string; status: string; postponed_until?: string; projet?: Pick<Projet, 'id' | 'nom'> }
+export interface WorkloadBlock { id: number; projet_id?: number; title: string; starts_at: string; ends_at: string; status: string; projet?: Pick<Projet, 'id' | 'nom'> }
+
 export interface Projet {
   id: number
   nom: string
@@ -97,6 +199,12 @@ export interface Projet {
   description?: string
   phase: string
   statut: string
+  priority?: 'normal' | 'sensible' | 'critique'
+  sub_status?: string
+  last_activity_at?: string
+  abandoned_at?: string
+  abandoned_reason?: string
+  archived_at?: string
   type_marche: string
   project_type: 'neuf_residentiel' | 'renovation_extension' | 'erp_tertiaire' | 'marche_public'
   honoraires_mode?: string
@@ -107,6 +215,10 @@ export interface Projet {
   client?: Client
   partenaires?: Partenaire[]
   documents?: Document[]
+  devis?: Devis[]
+  lots?: Lot[]
+  factures?: Facture[]
+  relances?: Relance[]
   documents_count?: number
   completed_documents_count?: number
   partenaires_count?: number
@@ -119,6 +231,13 @@ export interface Projet {
   phase_objectives?: string[]
   phase_checks_summary?: { label: string; done: boolean; alert: string }[]
   can_be_completed?: boolean
+  tracking_phases?: ProjectPhase[]
+  activities?: ProjectActivity[]
+  permit_instruction?: PermitInstruction
+  site_reports?: SiteReport[]
+  amendments?: ProjectAmendment[]
+  reservations?: ProjectReservation[]
+  warranties?: ProjectWarranty[]
   created_at?: string
   updated_at?: string
 }
@@ -146,6 +265,20 @@ export interface WorkflowStep {
   user?: User
 }
 
+export interface OcrAnalysis {
+  id: number
+  document_id: number
+  provider: string
+  statut: 'pending' | 'processing' | 'completed' | 'failed'
+  detected_type?: 'devis' | 'facture' | 'autre'
+  montant_ht?: number
+  montant_ttc?: number
+  tva?: number
+  confidence_score?: number
+  error_message?: string
+  processed_at?: string
+}
+
 export interface Document {
   id: number
   projet_id: number
@@ -154,6 +287,10 @@ export interface Document {
   phase?: string
   statut: string
   workflow_status: string
+  project_step_id?: number
+  detection_source?: 'not_detected' | 'manual' | 'automatic_confirmed'
+  external_provider?: string
+  external_reference?: string
   due_at?: string
   archived_at?: string
   file_path?: string
@@ -168,6 +305,8 @@ export interface Document {
   partenaire?: Partenaire
   document_type?: DocumentType
   workflow_steps?: WorkflowStep[]
+  ocr_analyses?: OcrAnalysis[]
+  project_step?: ProjectStep
 }
 
 export interface Pagination {

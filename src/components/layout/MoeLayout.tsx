@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, Bell, BriefcaseBusiness, Building2, ChevronDown, ChevronLeft, ChevronRight, FileText, HardHat, LayoutDashboard, LogOut, Menu, Plus, ReceiptText, Search, Send, Settings, UserRound, Users, X } from 'lucide-react'
+import { ArrowLeft, Bell, BriefcaseBusiness, Building2, ChevronDown, ChevronLeft, ChevronRight, FileText, HardHat, LayoutDashboard, LogOut, Menu, Plus, Search, Settings, UserRound, Users, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import GlobalSearch from '@/components/layout/GlobalSearch'
 import NotificationPanel from '@/components/layout/NotificationPanel'
@@ -19,11 +19,7 @@ const navigation = [
   ] },
   { group: 'Operations', items: [
     { to: '/documents', label: 'Documents', icon: FileText },
-    { to: '/consultation', label: 'Consultation', icon: Send },
-    { to: '/finances', label: 'Finances', icon: ReceiptText },
     { to: '/chantier', label: 'Suivi chantier', icon: HardHat },
-    { to: '/cloture', label: 'Cloture & archives', icon: Archive },
-    { to: '/relances', label: 'Relances', icon: Bell },
   ] },
 ]
 
@@ -40,6 +36,7 @@ export default function MoeLayout() {
   const { user, logout } = useAuth()
   const location = useLocation()
   const segment = location.pathname.split('/').filter(Boolean)[0] ?? 'dashboard'
+  const focusMode = segment === 'chantier'
   const pageTitle = pageTitles[segment] ?? 'Espace MOE'
   const alerts = useQuery({ queryKey: ['dashboard'], queryFn: async () => (await api.get<AlertData>('/dashboard')).data, staleTime: 30_000, refetchInterval: 120_000 })
   const alertCount = (alerts.data?.alerts.reminders.length ?? 0) + (alerts.data?.alerts.documents.length ?? 0)
@@ -49,9 +46,9 @@ export default function MoeLayout() {
 
   return <div className="min-h-screen bg-slate-50 text-slate-950">
     <a href="#main-content" className="fixed left-3 top-3 z-[100] -translate-y-20 rounded-lg bg-slate-950 px-4 py-2 text-sm text-white focus:translate-y-0">Aller au contenu</a>
-    {mobileOpen && <button aria-label="Fermer le menu" className="fixed inset-0 z-30 bg-slate-950/35 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />}
+    {!focusMode && mobileOpen && <button aria-label="Fermer le menu" className="fixed inset-0 z-30 bg-slate-950/35 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />}
 
-    <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white transition-[width,transform] duration-200 ${collapsed ? 'lg:w-20' : 'lg:w-64'} ${mobileOpen ? 'w-72 translate-x-0' : 'w-72 -translate-x-full lg:translate-x-0'}`}>
+    {!focusMode && <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white transition-[width,transform] duration-200 ${collapsed ? 'lg:w-20' : 'lg:w-64'} ${mobileOpen ? 'w-72 translate-x-0' : 'w-72 -translate-x-full lg:translate-x-0'}`}>
       <div className={`flex h-18 items-center border-b border-slate-100 ${collapsed ? 'justify-center px-3' : 'justify-between px-5'}`}>
         <Link to="/dashboard" className="flex items-center gap-3 overflow-hidden" onClick={() => setMobileOpen(false)}><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 font-bold text-white shadow-sm shadow-blue-200">P</div>{!collapsed && <div><p className="font-bold tracking-tight">PIMOO</p><p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Espace MOE</p></div>}</Link>
         <button aria-label="Fermer" className="rounded-lg p-2 hover:bg-slate-100 lg:hidden" onClick={() => setMobileOpen(false)}><X className="h-5 w-5" /></button>
@@ -71,11 +68,13 @@ export default function MoeLayout() {
         <button onClick={logout} title={collapsed ? 'Deconnexion' : undefined} className={`flex w-full items-center rounded-xl py-2 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'}`}><LogOut className="h-4 w-4" />{!collapsed && 'Deconnexion'}</button>
       </div>
       <button aria-label={collapsed ? 'Deployer la navigation' : 'Reduire la navigation'} onClick={toggleCollapsed} className="absolute -right-3 top-24 hidden h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm hover:text-blue-600 lg:grid">{collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}</button>
-    </aside>
+    </aside>}
 
-    <div className={`min-h-screen transition-[padding] duration-200 ${collapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+    <div className={`min-h-screen transition-[padding] duration-200 ${focusMode ? '' : collapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
       <header className="sticky top-0 z-30 flex h-18 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur-xl lg:px-8">
-        <button aria-label="Ouvrir le menu" className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>
+        {focusMode
+          ? <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"><ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline">Tableau de bord</span></Link>
+          : <button aria-label="Ouvrir le menu" className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>}
         <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{pageTitle}</p><p className="hidden text-xs text-slate-400 sm:block">Espace MOE / {pageTitle}</p></div>
         <button onClick={() => setSearchOpen(true)} className="ml-auto hidden h-10 w-full max-w-sm items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 hover:border-slate-300 hover:bg-white md:flex"><Search className="h-4 w-4" /><span className="flex-1 text-left">Recherche globale</span><kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-400">Ctrl K</kbd></button>
         <button aria-label="Rechercher" onClick={() => setSearchOpen(true)} className="ml-auto rounded-xl p-2.5 text-slate-500 hover:bg-slate-100 md:hidden"><Search className="h-5 w-5" /></button>
@@ -98,10 +97,10 @@ export default function MoeLayout() {
       </header>
 
       <main id="main-content" className="mx-auto w-full max-w-[1600px] p-4 pb-24 lg:p-8"><Outlet /></main>
-      <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden">
+      {!focusMode && <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden">
         {[{ to: '/dashboard', label: 'Accueil', icon: LayoutDashboard }, { to: '/projets', label: 'Projets', icon: BriefcaseBusiness }, { to: '/documents', label: 'Documents', icon: FileText }].map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-medium ${isActive ? 'text-blue-600' : 'text-slate-400'}`}><Icon className="h-5 w-5" />{label}</NavLink>)}
         <button onClick={() => setMobileOpen(true)} className="flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-medium text-slate-400"><Menu className="h-5 w-5" />Menu</button>
-      </nav>
+      </nav>}
     </div>
 
     {panel && <button aria-label="Fermer le panneau" className="fixed inset-0 z-20" onClick={closePanels} />}
