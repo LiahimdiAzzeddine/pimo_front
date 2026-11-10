@@ -10,6 +10,8 @@ export interface User {
   email_signature?: string
   avatar_path?: string
   avatar_url?: string
+  onboarding_completed?: boolean
+  documents_path?: string
   preferences?: {
     language?: 'fr' | 'en'
     timezone?: string

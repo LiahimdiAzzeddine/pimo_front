@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Award, BriefcaseBusiness, CalendarClock, CheckCircle2, Download, HardHat, PackageOpen, Pencil, Plus, Send, Trash2, TrendingDown } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
-import api from '@/lib/api'
+import api, { isLocalApp } from '@/lib/api'
 import ConsulterModal from '@/components/consultation/ConsulterModal'
 import LotFormModal from '@/components/consultation/LotFormModal'
 import OffreFormModal from '@/components/consultation/OffreFormModal'
@@ -196,7 +196,7 @@ function LotCard({ lot, offres, busy, onValider, onRefuser, onAttribuer, onDownl
       </div>
       {attribue && <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" />Attribue a {lot.partenaire?.nom_entreprise ?? lot.artisan_nom ?? 'une entreprise'}</span>}
       <div className="flex items-center gap-1">
-        {!attribue && <button type="button" disabled={busy} onClick={onConsulter} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"><Send className="h-4 w-4" />Consulter les entreprises</button>}
+        {!attribue && !isLocalApp && <button type="button" disabled={busy} onClick={onConsulter} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"><Send className="h-4 w-4" />Consulter les entreprises</button>}
         {!attribue && <button type="button" disabled={busy} onClick={onAddOffre} className="mr-1 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"><Plus className="h-4 w-4" />Ajouter une offre</button>}
         <button type="button" title="Renommer le lot" disabled={busy} onClick={onRename} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"><Pencil className="h-4 w-4" /></button>
         <button type="button" title="Supprimer le lot" disabled={busy} onClick={onDelete} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>

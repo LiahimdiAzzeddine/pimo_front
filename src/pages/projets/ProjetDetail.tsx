@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { apiErrorMessage } from '@/lib/utils'
 import ProjectFormModal from '@/components/projects/ProjectFormModal'
 import PublicLinksPanel from '@/components/projects/PublicLinksPanel'
+import { isLocalApp } from '@/lib/api'
 import type { ProjectPayload } from '@/components/projects/ProjectFormModal'
 import StatusBadge from '@/components/ui/StatusBadge'
 import type { Client, Document, PaginatedResponse, Projet } from '@/types'
@@ -317,7 +318,7 @@ export default function ProjetDetail() {
           </article>
         </section>
 
-        <PublicLinksPanel project={projet} documents={documents} onProjectChanged={load} />
+        {isLocalApp ? <section className="rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-800"><strong>Mode local</strong><p className="mt-1">Les liens publics et les invitations par e-mail nécessitent un service en ligne. Toutes les autres données de ce projet restent stockées sur cet appareil.</p></section> : <PublicLinksPanel project={projet} documents={documents} onProjectChanged={load} />}
 
         <section className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">

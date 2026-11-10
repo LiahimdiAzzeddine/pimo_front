@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Bell, BriefcaseBusiness, Building2, ChevronDown, ChevronLeft, ChevronRight, FileText, HardHat, LayoutDashboard, LogOut, Menu, Plus, Search, Settings, UserRound, Users, X } from 'lucide-react'
+import { ArrowLeft, Bell, BriefcaseBusiness, Building2, ChevronDown, ChevronLeft, ChevronRight, FileText, HardHat, Menu, Plus, Search, Settings, UserRound, Users, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import GlobalSearch from '@/components/layout/GlobalSearch'
 import NotificationPanel from '@/components/layout/NotificationPanel'
@@ -10,7 +10,7 @@ import api from '@/lib/api'
 
 const navigation = [
   { group: 'Pilotage', items: [
-    { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { to: '/dashboard', label: 'Tableau de bord', icon: HardHat },
     { to: '/projets', label: 'Projets', icon: BriefcaseBusiness },
   ] },
   { group: 'Relations', items: [
@@ -19,13 +19,12 @@ const navigation = [
   ] },
   { group: 'Operations', items: [
     { to: '/documents', label: 'Documents', icon: FileText },
-    { to: '/chantier', label: 'Suivi chantier', icon: HardHat },
   ] },
 ]
 
 const pageTitles: Record<string, string> = {
   dashboard: 'Tableau de bord', projets: 'Projets', documents: 'Documents', clients: 'Clients', partenaires: 'Partenaires',
-  consultation: 'Consultation', finances: 'Finances', chantier: 'Suivi chantier', cloture: 'Cloture & archives', relances: 'Relances', profil: 'Profil & securite',
+  consultation: 'Consultation', finances: 'Finances', chantier: 'Suivi chantier', cloture: 'Cloture & archives', relances: 'Relances', profil: 'Profil & securite', parametres: 'Paramètres',
 }
 
 export default function MoeLayout() {
@@ -33,10 +32,10 @@ export default function MoeLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [panel, setPanel] = useState<'notifications' | 'create' | 'user' | null>(null)
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const location = useLocation()
   const segment = location.pathname.split('/').filter(Boolean)[0] ?? 'dashboard'
-  const focusMode = segment === 'chantier'
+  const focusMode = false
   const pageTitle = pageTitles[segment] ?? 'Espace MOE'
   const alerts = useQuery({ queryKey: ['dashboard'], queryFn: async () => (await api.get<AlertData>('/dashboard')).data, staleTime: 30_000, refetchInterval: 120_000 })
   const alertCount = (alerts.data?.alerts.reminders.length ?? 0) + (alerts.data?.alerts.documents.length ?? 0)
@@ -62,10 +61,10 @@ export default function MoeLayout() {
       </nav>
 
       <div className="border-t border-slate-100 p-3">
+        <NavLink to="/parametres" title={collapsed ? 'Paramètres' : undefined} className={({ isActive }) => `mb-2 flex items-center rounded-xl py-2.5 text-sm font-medium transition ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} ${isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}><Settings className="h-5 w-5 shrink-0" />{!collapsed && <span>Paramètres</span>}</NavLink>
         <NavLink to="/profil" title={collapsed ? 'Profil & securite' : undefined} className={({ isActive }) => `mb-2 flex items-center rounded-xl p-2.5 transition ${collapsed ? 'justify-center' : 'gap-3'} ${isActive ? 'bg-blue-50 text-blue-700' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-900 text-xs font-bold text-white">{user?.name?.slice(0, 2).toUpperCase()}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user?.name}</p><p className="truncate text-xs text-slate-400">{user?.email}</p></div>}
         </NavLink>
-        <button onClick={logout} title={collapsed ? 'Deconnexion' : undefined} className={`flex w-full items-center rounded-xl py-2 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'}`}><LogOut className="h-4 w-4" />{!collapsed && 'Deconnexion'}</button>
       </div>
       <button aria-label={collapsed ? 'Deployer la navigation' : 'Reduire la navigation'} onClick={toggleCollapsed} className="absolute -right-3 top-24 hidden h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm hover:text-blue-600 lg:grid">{collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}</button>
     </aside>}
@@ -92,13 +91,13 @@ export default function MoeLayout() {
         </div>
         <div className="relative hidden sm:block">
           <button onClick={() => setPanel(panel === 'user' ? null : 'user')} className={`flex items-center gap-2 rounded-xl p-1.5 pr-2 hover:bg-slate-100 ${panel === 'user' ? 'bg-slate-100' : ''}`}><div className="grid h-8 w-8 place-items-center rounded-full bg-slate-900 text-[11px] font-bold text-white">{user?.name?.slice(0, 2).toUpperCase()}</div><ChevronDown className="h-4 w-4 text-slate-400" /></button>
-          {panel === 'user' && <div className="absolute right-0 top-12 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"><div className="border-b border-slate-100 p-4"><p className="truncate text-sm font-semibold">{user?.name}</p><p className="truncate text-xs text-slate-400">{user?.email}</p></div><div className="p-2"><Link to="/profil" onClick={closePanels} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"><UserRound className="h-4 w-4" />Mon profil</Link><Link to="/profil" onClick={closePanels} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"><Settings className="h-4 w-4" />Securite</Link><button onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"><LogOut className="h-4 w-4" />Se deconnecter</button></div></div>}
+          {panel === 'user' && <div className="absolute right-0 top-12 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"><div className="border-b border-slate-100 p-4"><p className="truncate text-sm font-semibold">{user?.name}</p><p className="truncate text-xs text-slate-400">{user?.email}</p></div><div className="p-2"><Link to="/profil" onClick={closePanels} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"><UserRound className="h-4 w-4" />Mon profil</Link><Link to="/parametres" onClick={closePanels} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"><Settings className="h-4 w-4" />Paramètres</Link></div></div>}
         </div>
       </header>
 
       <main id="main-content" className="mx-auto w-full max-w-[1600px] p-4 pb-24 lg:p-8"><Outlet /></main>
       {!focusMode && <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden">
-        {[{ to: '/dashboard', label: 'Accueil', icon: LayoutDashboard }, { to: '/projets', label: 'Projets', icon: BriefcaseBusiness }, { to: '/documents', label: 'Documents', icon: FileText }].map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-medium ${isActive ? 'text-blue-600' : 'text-slate-400'}`}><Icon className="h-5 w-5" />{label}</NavLink>)}
+        {[{ to: '/dashboard', label: 'Chantier', icon: HardHat }, { to: '/projets', label: 'Projets', icon: BriefcaseBusiness }, { to: '/documents', label: 'Documents', icon: FileText }].map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-medium ${isActive ? 'text-blue-600' : 'text-slate-400'}`}><Icon className="h-5 w-5" />{label}</NavLink>)}
         <button onClick={() => setMobileOpen(true)} className="flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-medium text-slate-400"><Menu className="h-5 w-5" />Menu</button>
       </nav>}
     </div>

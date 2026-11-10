@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Building2, ImageUp, KeyRound, LogOut, MailCheck, Save, UserRound } from 'lucide-react'
-import api from '@/lib/api'
+import { Building2, Download, ImageUp, KeyRound, LogOut, MailCheck, Save, UserRound } from 'lucide-react'
+import api, { isLocalApp } from '@/lib/api'
+import { exportLocalBackup } from '@/lib/localBackup'
 import { apiErrorMessage } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import PageHeader from '@/components/ui/PageHeader'
@@ -60,6 +61,7 @@ export default function Profile() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [savingAvatar, setSavingAvatar] = useState(false)
+  const [backupState, setBackupState] = useState({ busy: false, message: '', error: '' })
 
   useEffect(() => {
     setProfile(profileFromUser(user))
@@ -141,6 +143,16 @@ export default function Profile() {
     }
   }
 
+  const backup = async () => {
+    setBackupState({ busy: true, message: '', error: '' })
+    try {
+      const destination = await exportLocalBackup()
+      setBackupState({ busy: false, message: destination ? `Sauvegarde créée dans ${destination}` : '', error: '' })
+    } catch (error) {
+      setBackupState({ busy: false, message: '', error: apiErrorMessage(error, 'Impossible de créer la sauvegarde locale.') })
+    }
+  }
+
   return <><PageHeader title="Profil & sécurité" description="Gérez votre identité, vos informations professionnelles et vos préférences." />
     <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
       <form onSubmit={saveProfile} className="space-y-6">
@@ -190,14 +202,20 @@ export default function Profile() {
           {(avatarMessage || avatarError) && <p className={`mt-3 text-sm ${avatarError ? 'text-red-600' : 'text-emerald-600'}`}>{avatarError || avatarMessage}</p>}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        {isLocalApp && <section className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
+          <div className="mb-4 flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-white"><Download className="h-5 w-5 text-blue-600" /></div><div><h2 className="font-bold text-blue-950">Données locales</h2><p className="text-xs text-blue-700">Base SQLite et documents stockés uniquement sur cet appareil.</p></div></div>
+          <button type="button" disabled={backupState.busy} onClick={() => void backup()} className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{backupState.busy ? 'Sauvegarde...' : 'Créer une sauvegarde complète'}</button>
+          {(backupState.message || backupState.error) && <p className={`mt-3 break-words text-xs ${backupState.error ? 'text-red-700' : 'text-emerald-700'}`}>{backupState.error || backupState.message}</p>}
+        </section>}
+
+        {!isLocalApp && <section className="rounded-2xl border border-slate-200 bg-white p-6">
           <div className="mb-5 flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50"><KeyRound className="h-5 w-5 text-violet-600" /></div><div><h2 className="font-bold">Mot de passe</h2><p className="text-xs text-slate-400">Dernière connexion : {user?.last_login_at ? new Date(user.last_login_at).toLocaleString('fr-FR') : 'non disponible'}</p></div></div>
           <form onSubmit={savePassword} className="space-y-4">{[['current_password', 'Mot de passe actuel'], ['password', 'Nouveau mot de passe'], ['password_confirmation', 'Confirmation']].map(([name, label]) => <label key={name} className="block"><span className="mb-1 block text-sm font-medium">{label}</span><input type="password" required value={passwords[name as keyof typeof passwords]} onChange={(event) => setPasswords({ ...passwords, [name]: event.target.value })} className={inputClass} /></label>)}{(passwordMessage || passwordError) && <p className={`text-sm ${passwordError ? 'text-red-600' : 'text-emerald-600'}`}>{passwordError || passwordMessage}</p>}<button disabled={savingPassword} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{savingPassword ? 'Modification...' : 'Modifier le mot de passe'}</button></form>
-        </section>
+        </section>}
       </aside>
     </div>
 
     {!user?.email_verified_at && <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-6"><div><h2 className="font-bold text-amber-900">Email non vérifié</h2><p className="text-sm text-amber-700">Validez votre adresse pour sécuriser pleinement votre compte.</p>{(verificationMessage || verificationError) && <p className={`mt-2 text-sm font-medium ${verificationError ? 'text-red-700' : 'text-emerald-700'}`}>{verificationError || verificationMessage}</p>}</div><button onClick={resendVerification} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white"><MailCheck className="h-4 w-4" />Renvoyer le lien</button></section>}
-    <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-red-100 bg-red-50 p-6"><div><h2 className="font-bold text-red-900">Sessions actives</h2><p className="text-sm text-red-700">Déconnectez tous les navigateurs et appareils utilisant votre compte.</p></div><button onClick={logoutAll} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white"><LogOut className="h-4 w-4" />Tout déconnecter</button></section>
+    {!isLocalApp && <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-red-100 bg-red-50 p-6"><div><h2 className="font-bold text-red-900">Sessions actives</h2><p className="text-sm text-red-700">Déconnectez tous les navigateurs et appareils utilisant votre compte.</p></div><button onClick={logoutAll} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white"><LogOut className="h-4 w-4" />Tout déconnecter</button></section>}
   </>
 }

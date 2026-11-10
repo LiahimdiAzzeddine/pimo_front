@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import api from '@/lib/api'
+import api, { isLocalApp } from '@/lib/api'
 import type { User } from '@/types'
 
 interface AuthContextType {
@@ -16,9 +16,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
+  const [token, setToken] = useState<string | null>(() => isLocalApp ? 'local-device' : localStorage.getItem('token'))
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(() => Boolean(localStorage.getItem('token')))
+  const [isLoading, setIsLoading] = useState(() => isLocalApp || Boolean(localStorage.getItem('token')))
 
   useEffect(() => {
     if (!token) return
@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    if (isLocalApp) return
     api.post('/auth/logout').finally(() => {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
